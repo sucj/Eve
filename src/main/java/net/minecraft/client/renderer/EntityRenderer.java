@@ -92,6 +92,11 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.util.glu.Project;
 
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.render.HurtCamEvent;
+import org.union4dev.base.events.render.Render3DEvent;
+
+
 public class EntityRenderer implements IResourceManagerReloadListener {
     private static final Logger logger = LogManager.getLogger();
     private static final ResourceLocation locationRainPng = new ResourceLocation("textures/environment/rain.png");
@@ -491,6 +496,9 @@ public class EntityRenderer implements IResourceManagerReloadListener {
 
     private void hurtCameraEffect(float partialTicks) {
         if (this.mc.getRenderViewEntity() instanceof EntityLivingBase entitylivingbase) {
+            HurtCamEvent event = new HurtCamEvent();
+            EventManager.call(event);
+            if (event.isCancelled()) return;
             float f = entitylivingbase.hurtTime - partialTicks;
 
             if (entitylivingbase.getHealth() <= 0.0F) {
@@ -1379,6 +1387,9 @@ public class EntityRenderer implements IResourceManagerReloadListener {
         GlStateManager.enableCull();
         GlStateManager.disableBlend();
         GlStateManager.disableFog();
+
+        Render3DEvent render3D = new Render3DEvent(partialTicks);
+        EventManager.call(render3D);
 
         if (entity.posY + entity.getEyeHeight() >= 128.0D + (this.mc.gameSettings.ofCloudsHeight * 128.0F)) {
             this.renderCloudsCheck(renderglobal, partialTicks, pass);

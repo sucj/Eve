@@ -46,6 +46,9 @@ import net.minecraft.util.StringUtils;
 import net.minecraft.world.border.WorldBorder;
 import net.optifine.CustomColors;
 
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.render.Render2DEvent;
+
 public class GuiIngame extends Gui {
     private static final ResourceLocation vignetteTexPath = new ResourceLocation("textures/misc/vignette.png");
     private static final ResourceLocation widgetsTexPath = new ResourceLocation("textures/gui/widgets.png");
@@ -123,6 +126,9 @@ public class GuiIngame extends Gui {
         } else {
             this.renderTooltip(scaledresolution, partialTicks);
         }
+
+        Render2DEvent event = new Render2DEvent(scaledresolution, partialTicks);
+        EventManager.call(event);
 
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         this.mc.getTextureManager().bindTexture(icons);

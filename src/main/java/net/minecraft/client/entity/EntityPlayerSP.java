@@ -52,6 +52,12 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IInteractionObject;
 import net.minecraft.world.World;
 
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.movement.MotionUpdateEvent;
+import org.union4dev.base.events.movement.MoveEvent;
+import org.union4dev.base.events.movement.SlowdownEvent;
+import org.union4dev.base.events.update.UpdateEvent;
+
 public class EntityPlayerSP extends AbstractClientPlayer {
     public final NetHandlerPlayClient sendQueue;
     private final StatFileWriter statWriter;
@@ -102,6 +108,7 @@ public class EntityPlayerSP extends AbstractClientPlayer {
     }
 
     public void onUpdate() {
+        EventManager.call(new UpdateEvent());
         if (this.worldObj.isBlockLoaded(new BlockPos(this.posX, 0.0D, this.posZ))) {
             super.onUpdate();
 
@@ -114,7 +121,16 @@ public class EntityPlayerSP extends AbstractClientPlayer {
         }
     }
 
+    @Override
+    public void moveEntity(double x, double y, double z) {
+        MoveEvent move = new MoveEvent(x, y, z);
+        EventManager.call(move);
+        super.moveEntity(move.x, move.y, move.z);
+    }
+
     public void onUpdateWalkingPlayer() {
+        MotionUpdateEvent pre = new MotionUpdateEvent(this.rotationYaw, this.rotationPitch, this.posX, this.getEntityBoundingBox().minY, this.posZ, this.onGround);
+        EventManager.call(pre);
         boolean flag = this.isSprinting();
 
         if (flag != this.serverSprintState) {
@@ -140,23 +156,26 @@ public class EntityPlayerSP extends AbstractClientPlayer {
         }
 
         if (this.isCurrentViewEntity()) {
-            double d0 = this.posX - this.lastReportedPosX;
-            double d1 = this.getEntityBoundingBox().minY - this.lastReportedPosY;
-            double d2 = this.posZ - this.lastReportedPosZ;
-            double d3 = (this.rotationYaw - this.lastReportedYaw);
-            double d4 = (this.rotationPitch - this.lastReportedPitch);
+            boolean ground = pre.isOnGround();
+            double d0 = pre.getX() - this.lastReportedPosX;
+            double d1 = pre.getY() - this.lastReportedPosY;
+            double d2 = pre.getZ() - this.lastReportedPosZ;
+            double d3 = (pre.getYaw() - this.lastReportedYaw);
+            double d4 = (pre.getPitch() - this.lastReportedPitch);
             boolean flag2 = d0 * d0 + d1 * d1 + d2 * d2 > 9.0E-4D || this.positionUpdateTicks >= 20;
             boolean flag3 = d3 != 0.0D || d4 != 0.0D;
 
             if (this.ridingEntity == null) {
-                if (flag2 && flag3) {
-                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(this.posX, this.getEntityBoundingBox().minY, this.posZ, this.rotationYaw, this.rotationPitch, this.onGround));
-                } else if (flag2) {
-                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(this.posX, this.getEntityBoundingBox().minY, this.posZ, this.onGround));
-                } else if (flag3) {
-                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(this.rotationYaw, this.rotationPitch, this.onGround));
-                } else {
-                    this.sendQueue.addToSendQueue(new C03PacketPlayer(this.onGround));
+                if (!pre.isCancelled()) {
+                    if (flag2 && flag3) {
+                        sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(pre.getX(), pre.getY(), pre.getZ(), pre.getYaw(), pre.getPitch(), ground));
+                    } else if (flag2) {
+                        sendQueue.addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(pre.getX(), pre.getY(), pre.getZ(), ground));
+                    } else if (flag3) {
+                        sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(pre.getYaw(), pre.getPitch(), ground));
+                    } else {
+                        sendQueue.addToSendQueue(new C03PacketPlayer(ground));
+                    }
                 }
             } else {
                 this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(this.motionX, -999.0D, this.motionZ, this.rotationYaw, this.rotationPitch, this.onGround));
@@ -166,16 +185,19 @@ public class EntityPlayerSP extends AbstractClientPlayer {
             ++this.positionUpdateTicks;
 
             if (flag2) {
-                this.lastReportedPosX = this.posX;
-                this.lastReportedPosY = this.getEntityBoundingBox().minY;
-                this.lastReportedPosZ = this.posZ;
+                this.lastReportedPosX = pre.getX();
+                this.lastReportedPosY = pre.getY();
+                this.lastReportedPosZ = pre.getZ();
                 this.positionUpdateTicks = 0;
             }
 
             if (flag3) {
-                this.lastReportedYaw = this.rotationYaw;
-                this.lastReportedPitch = this.rotationPitch;
+                this.lastReportedYaw = pre.getYaw();
+                this.lastReportedPitch = pre.getPitch();
             }
+
+            MotionUpdateEvent post = new MotionUpdateEvent();
+            EventManager.call(post);
         }
     }
 
@@ -521,9 +543,13 @@ public class EntityPlayerSP extends AbstractClientPlayer {
         this.movementInput.updatePlayerMoveState();
 
         if (this.isUsingItem() && !this.isRiding()) {
-            this.movementInput.moveStrafe *= 0.2F;
-            this.movementInput.moveForward *= 0.2F;
-            this.sprintToggleTimer = 0;
+            SlowdownEvent event = new SlowdownEvent(0.2F, 0.2F);
+            EventManager.call(event);
+            if (!event.isCancelled()) {
+                this.movementInput.moveStrafe *= event.getStrafe();
+                this.movementInput.moveForward *= event.getForward();
+                this.sprintToggleTimer = 0;
+            }
         }
 
         this.pushOutOfBlocks(this.posX - this.width * 0.35D, this.getEntityBoundingBox().minY + 0.5D, this.posZ + this.width * 0.35D);

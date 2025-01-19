@@ -29,6 +29,9 @@ import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSettings;
 
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.misc.AttackEvent;
+
 public class PlayerControllerMP {
     private final Minecraft mc;
     private final NetHandlerPlayClient netClientHandler;
@@ -345,12 +348,17 @@ public class PlayerControllerMP {
     }
 
     public void attackEntity(EntityPlayer playerIn, Entity targetEntity) {
-        this.syncCurrentPlayItem();
-        this.netClientHandler.addToSendQueue(new C02PacketUseEntity(targetEntity, C02PacketUseEntity.Action.ATTACK));
+        AttackEvent event = new AttackEvent(targetEntity, true); // Pre attack
+        EventManager.call(event);
+        if (!event.isCancelled()) {
+            this.syncCurrentPlayItem();
+            this.netClientHandler.addToSendQueue(new C02PacketUseEntity(targetEntity, C02PacketUseEntity.Action.ATTACK));
 
-        if (this.currentGameType != WorldSettings.GameType.SPECTATOR) {
-            playerIn.attackTargetEntityWithCurrentItem(targetEntity);
+            if (this.currentGameType != WorldSettings.GameType.SPECTATOR) {
+                playerIn.attackTargetEntityWithCurrentItem(targetEntity);
+            }
         }
+        EventManager.call(new AttackEvent(targetEntity)); // Post attack
     }
 
     public boolean interactWithEntitySendPacket(EntityPlayer playerIn, Entity targetEntity) {

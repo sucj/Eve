@@ -14,6 +14,7 @@ public class ComboValue extends AbstractValue<String> {
     public ComboValue(String name, String value, String... values) {
         super(name);
         this.strings = values;
+        this.setValue(value);
     }
 
     public ArrayList<String> getAsArray() {

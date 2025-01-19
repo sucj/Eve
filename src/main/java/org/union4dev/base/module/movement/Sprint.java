@@ -20,14 +20,12 @@ public class Sprint implements Access.InstanceAccess {
 
     /**
      * Subscribe a {@link TickEvent}
-     *
      * @param event Event
      */
     @EventTarget
     public void onTick(TickEvent event) {
         // setSuffix(moduleManager.getModules().size() + " Modules and " + commandManager.getCommands().size() + " Commands!", this);
-
-        mc.gameSettings.keyBindSprint.pressed = true;
+        mc.gameSettings.keyBindSprint.keepPressed = true;
     }
 
     /**

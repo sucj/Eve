@@ -45,6 +45,9 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.misc.GuiClickEvent;
+
 public abstract class GuiScreen extends Gui implements GuiYesNoCallback {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final Set<String> PROTOCOLS = Sets.newHashSet("http", "https");
@@ -329,8 +332,13 @@ public abstract class GuiScreen extends Gui implements GuiYesNoCallback {
     }
 
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+        GuiClickEvent guiClickEvent = new GuiClickEvent(mouseX, mouseY, mouseButton);
+        EventManager.call(guiClickEvent);
+        if (guiClickEvent.isCancelled()) return;
         if (mouseButton == 0) {
-            for (GuiButton guibutton : new ArrayList<>(this.buttonList)) {
+            for (int i = 0; i < this.buttonList.size(); ++i) {
+                GuiButton guibutton = (GuiButton) this.buttonList.get(i);
+
                 if (guibutton.mousePressed(this.mc, mouseX, mouseY)) {
                     this.selectedButton = guibutton;
                     guibutton.playPressSound(this.mc.getSoundHandler());
@@ -404,14 +412,14 @@ public abstract class GuiScreen extends Gui implements GuiYesNoCallback {
     }
 
     public void handleKeyboardInput() throws IOException {
-		final char character = Keyboard.getEventCharacter();
+        final char character = Keyboard.getEventCharacter();
 
-		if ((Keyboard.getEventKey() == 0 && character >= ' ') || Keyboard.getEventKeyState()) {
-			this.keyTyped(character, Keyboard.getEventKey());
-		}
+        if ((Keyboard.getEventKey() == 0 && character >= ' ') || Keyboard.getEventKeyState()) {
+            this.keyTyped(character, Keyboard.getEventKey());
+        }
 
-		this.mc.dispatchKeypresses();
-	}
+        this.mc.dispatchKeypresses();
+    }
 
     public void updateScreen() {
     }

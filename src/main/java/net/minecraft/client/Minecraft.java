@@ -170,6 +170,13 @@ import org.lwjgl.opengl.OpenGLException;
 import org.lwjgl.opengl.PixelFormat;
 import org.lwjgl.util.glu.GLU;
 
+import org.union4dev.base.Access;
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.misc.KeyInputEvent;
+import org.union4dev.base.events.misc.MiddleClickEvent;
+import org.union4dev.base.events.update.TickEvent;
+import org.union4dev.base.events.update.TickEvent.Phase;
+
 public class Minecraft implements IThreadListener {
     private static final Logger logger = LogManager.getLogger();
     private static final ResourceLocation locationMojangPng = new ResourceLocation("textures/gui/title/mojang.png");
@@ -443,6 +450,10 @@ public class Minecraft implements IThreadListener {
             this.gameSettings.enableVsync = false;
             this.gameSettings.saveOptions();
         }
+
+        new Access();
+
+        Access.getInstance().startUp();
 
         this.renderGlobal.makeEntityOutlineShader();
     }
@@ -899,6 +910,7 @@ public class Minecraft implements IThreadListener {
     }
 
     public void shutdown() {
+        Access.getInstance().stopC();
         this.running = false;
     }
 
@@ -1101,6 +1113,7 @@ public class Minecraft implements IThreadListener {
     }
 
     public void runTick() throws IOException {
+        EventManager.call(new TickEvent(Phase.START));
         if (this.rightClickDelayTimer > 0) {
             --this.rightClickDelayTimer;
         }
@@ -1237,6 +1250,9 @@ public class Minecraft implements IThreadListener {
                     if (k == 62 && this.entityRenderer != null) {
                         this.entityRenderer.switchUseShader();
                     }
+
+                    KeyInputEvent event = new KeyInputEvent(k);
+                    EventManager.call(event);
 
                     if (this.currentScreen != null) {
                         this.currentScreen.handleKeyboardInput();
@@ -1447,6 +1463,8 @@ public class Minecraft implements IThreadListener {
         }
 
         this.systemTime = getSystemTime();
+
+        EventManager.call(new TickEvent(Phase.END));
     }
 
     public void launchIntegratedServer(String folderName, String worldName, WorldSettings worldSettingsIn) {
@@ -1619,6 +1637,7 @@ public class Minecraft implements IThreadListener {
     }
 
     private void middleClickMouse() {
+        EventManager.call(new MiddleClickEvent(objectMouseOver));
         if (this.objectMouseOver != null) {
             boolean flag = this.thePlayer.capabilities.isCreativeMode;
             int i = 0;

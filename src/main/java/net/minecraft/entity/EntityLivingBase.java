@@ -53,6 +53,9 @@ import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.movement.JumpEvent;
+
 public abstract class EntityLivingBase extends Entity {
     private static final UUID sprintingSpeedBoostModifierUUID = UUID.fromString("662A6B8D-DA3E-4C1C-8813-96EA6097278D");
     private static final AttributeModifier sprintingSpeedBoostModifier = (new AttributeModifier(sprintingSpeedBoostModifierUUID, "Sprinting speed boost", 0.30000001192092896D, 2)).setSaved(false);
@@ -1075,14 +1078,19 @@ public abstract class EntityLivingBase extends Entity {
     }
 
     protected void jump() {
-        this.motionY = this.getJumpUpwardsMotion();
+        final JumpEvent event = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw);
+        EventManager.call(event);
+
+        if (event.isCancelled()) return;
+
+        this.motionY = event.getJumpMotion();
 
         if (this.isPotionActive(Potion.jump)) {
             this.motionY += (this.getActivePotionEffect(Potion.jump).getAmplifier() + 1) * 0.1F;
         }
 
         if (this.isSprinting()) {
-            float f = this.rotationYaw * 0.017453292F;
+            float f = event.getYaw() * 0.017453292F;
             this.motionX -= MathHelper.sin(f) * 0.2F;
             this.motionZ += MathHelper.cos(f) * 0.2F;
         }

@@ -51,6 +51,10 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 
+import org.union4dev.base.events.EventManager;
+import org.union4dev.base.events.network.PacketReceiveEvent;
+import org.union4dev.base.events.network.PacketSendEvent;
+
 public class NetworkManager extends SimpleChannelInboundHandler<Packet> {
     private static final Logger logger = LogManager.getLogger();
     public static final Marker logMarkerNetwork = MarkerManager.getMarker("NETWORK");
@@ -120,10 +124,14 @@ public class NetworkManager extends SimpleChannelInboundHandler<Packet> {
     }
 
     protected void channelRead0(ChannelHandlerContext p_channelRead0_1_, Packet p_channelRead0_2_) throws Exception {
+        PacketReceiveEvent event = new PacketReceiveEvent(p_channelRead0_2_);
+        EventManager.call(event);
+        if (event.isCancelled()) return;
         if (this.channel.isOpen()) {
             try {
                 p_channelRead0_2_.processPacket(this.packetListener);
             } catch (ThreadQuickExitException var4) {
+                ;
             }
         }
     }
@@ -135,15 +143,22 @@ public class NetworkManager extends SimpleChannelInboundHandler<Packet> {
     }
 
     public void sendPacket(Packet packetIn) {
+        PacketSendEvent event = new PacketSendEvent(packetIn);
+        EventManager.call(event);
+        if (event.isCancelled()) return;
+
         if (this.isChannelOpen()) {
             this.flushOutboundQueue();
-            this.dispatchPacket(packetIn, null);
+            this.dispatchPacket(packetIn, (GenericFutureListener<? extends Future<? super Void>>[]) null);
         } else {
             this.readWriteLock.writeLock().lock();
 
-            try {
-                this.outboundPacketsQueue.add(new NetworkManager.InboundHandlerTuplePacketListener(packetIn, (GenericFutureListener[]) null));
-            } finally {
+            try
+            {
+                this.outboundPacketsQueue.add(new NetworkManager.InboundHandlerTuplePacketListener(packetIn, (GenericFutureListener[])null));
+            }
+            finally
+            {
                 this.readWriteLock.writeLock().unlock();
             }
         }
